@@ -11,10 +11,13 @@ export type BoardLine = { label: string; value: string; tone?: 'ok' | 'warn' | '
 
 // a desk's footprint: full size up to 8 agents, small past that
 const CELL_W = 30
-const CELL_H = 24
-const SMALL_W = 20
-const SMALL_H = 18
+const CELL_H = 20
+const SMALL_W = 22
+const SMALL_H = 15
 const SMALL_PAST = 8
+const AISLE = 6 // between two pairs of facing columns
+/** From this width the whiteboard hangs on the wall beside the boss. */
+export const WIDE_FROM = 110
 
 const C = {
   wall: 0x3b2e5a,
@@ -119,14 +122,14 @@ export type Plan = {
 
 export function plan(width: number, workers: number, boardLines: number): Plan {
   const w = Math.max(64, Math.min(160, width))
-  const wide = w >= 120
+  const wide = w >= WIDE_FROM
   const lines = Math.max(1, boardLines)
   let wall: number, board: Plan['board'], mx: number, roomEnd: number
   if (wide) {
     // board on the wall to the left, the boss and his clocks to the right
     const bh = Math.min(6, lines) * 6 + 4
     wall = Math.max(34, bh + 6)
-    const bw = Math.min(72, Math.max(64, Math.floor(w * 0.45)))
+    const bw = Math.min(72, Math.max(60, Math.floor(w * 0.45)))
     board = { x: 4, y: 3, w: bw, h: bh, chars: Math.floor((bw - 4) / 4), lines: Math.min(6, lines) }
     mx = Math.floor(bw + 4 + (w - bw - 4) / 2)
     roomEnd = wall + 15
@@ -141,18 +144,21 @@ export function plan(width: number, workers: number, boardLines: number): Plan {
   }
   const clockOff = Math.max(13, Math.min(22, Math.floor((wide ? w - board.w - 8 : w) / 2) - 10))
   const deskTop = roomEnd + 5
-  // one desk per agent: two rows facing each other, three rows of small desks past 8;
-  // a pane too narrow for that many across gets extra rows instead
+  // one desk per agent, in columns that run down the room, each pair facing across its monitors:
+  // two columns up to 8 agents, four columns of small desks past that (two where four do not fit)
   const small = workers > SMALL_PAST
   const cellW = small ? SMALL_W : CELL_W
   const cellH = small ? SMALL_H : CELL_H
-  const fit = Math.max(1, Math.floor((w - 2) / cellW))
-  const want = workers <= 1 ? workers : workers <= SMALL_PAST ? 2 : 3
-  const cols = Math.min(fit, Math.max(1, Math.ceil(workers / Math.max(1, want))))
-  const rows = Math.ceil(workers / cols)
+  const cols = Math.min(workers, small && gridWidth(4, SMALL_W) <= w - 2 ? 4 : 2)
+  const rows = cols ? Math.ceil(workers / cols) : 0
   let h = deskTop + Math.max(rows * cellH, 6) + 1
   if (h % 2) h++
   return { w, h, wide, wall, mx, clockOff, board, roomEnd, deskTop, cols, rows, small, cellW, cellH }
+}
+
+/** How wide `cols` columns of desks are, an aisle between each facing pair. */
+export function gridWidth(cols: number, cellW: number) {
+  return cols * cellW + Math.max(0, Math.ceil(cols / 2) - 1) * AISLE
 }
 
 /** The floor under everything: wall, the boss's carpet, the bullpen's planks. */
@@ -235,35 +241,39 @@ const SPRITE = [
   'BBBBBBBB',
 ]
 
-// the same person seen from behind, for the row that faces back across the desks
-const BACK = [
+// the same person in profile, facing right, for the columns that face each other across the desks
+const SIDE = [
   '..HHHH..',
   '.HHHHHH.',
-  '.HHHHHH.',
-  '.HHHHHH.',
-  '.SHHHHS.',
-  '..SSSS..',
+  '.HHHSSS.',
+  '.HHSSES.',
+  '..SSSSSS',
+  '...SSS..',
+  '..BBBB..',
   '.BBBBBB.',
-  'BBBBBBBB',
-  'BBBBBBBB',
-  'BBBBBBBB',
+  '.BBBBBB.',
+  '.BBBBBB.',
 ]
 
-function backPerson(f: Frame, x: number, y: number, look: Look, act: Act, tick: number) {
+/** A person seen from the side, facing right, or left when `left`. */
+function sidePerson(f: Frame, x: number, y: number, look: Look, act: Act, tick: number, left: boolean) {
   const k = (c: number) => (look.dim ? grey(c) : c)
   const bob = act === 'think' || act === 'idle' ? (tick % 4 === 0 ? 1 : 0) : 0
-  BACK.forEach((row, ry) => {
+  const at = (rx: number) => x + (left ? 7 - rx : rx)
+  SIDE.forEach((row, ry) => {
     for (let rx = 0; rx < 8; rx++) {
       const ch = row[rx]
-      const c = ch === 'H' ? look.hair : ch === 'S' ? look.skin : ch === 'B' ? look.shirt : undefined
-      if (c !== undefined) set(f, x + rx, y + ry + (ry < 6 ? bob : 0), k(c))
+      let c = ch === 'H' ? look.hair : ch === 'S' ? look.skin : ch === 'B' ? look.shirt : undefined
+      if (ch === 'E') c = act === 'done' ? look.skin : 0x111111
+      if (c !== undefined) set(f, at(rx), y + ry + (ry < 6 ? bob : 0), k(c))
     }
   })
-  // elbows working at the keyboard, seen from behind
+  // an arm reaching for the keyboard, tapping while busy
   const busy = act === 'type' || act === 'bash' || act === 'plan' || act === 'tool'
   const up = busy ? tick % 2 : 0
-  set(f, x - 1, y + 6 + up, k(look.shirt))
-  set(f, x + 8, y + 7 - up, k(look.shirt))
+  set(f, at(7), y + 7 + up, k(look.shirt))
+  set(f, at(8), y + 7 + up, k(look.skin))
+  if (act === 'read') rect(f, left ? x - 2 : x + 7, y + 5, 3, 3, look.dim ? 0xaaaaaa : C.white)
 }
 
 function person(f: Frame, x: number, y: number, look: Look, act: Act, tick: number) {
@@ -386,39 +396,28 @@ function check(f: Frame, x: number, y: number) {
 const label = (w: Worker) => (w.act === 'done' ? 0x8a6a50 : 0xf5deb3)
 
 /**
- * One agent at a desk. A front-facing row sits behind its desks, looking out;
- * the row below it faces back across the monitors, so the two rows face each other.
+ * One agent at a desk in a column. A left column's agents sit on the outside facing right,
+ * the column beside it faces left, so each pair of columns face each other across their monitors.
  */
-function station(f: Frame, w: Worker, cx: number, cy: number, tick: number, small: boolean, back: boolean) {
+function station(f: Frame, w: Worker, cx: number, cy: number, tick: number, small: boolean, left: boolean) {
   const seed = hash(w.id) % 7
   const look = lookFor(w)
   const done = w.act === 'done'
-  if (!small && !back) {
-    bubble(f, cx + 6, cy, w.act, tick)
-    person(f, cx + 4, cy + 6, look, w.act, tick)
-    monitor(f, cx + 15, cy + 5, w.act, tick, seed)
-    desk(f, cx + 1, cy + 14, CELL_W - 3, 6)
-    text(f, '#' + w.num, cx + 3, cy + 17, label(w))
-    if (done) check(f, cx + 22, cy + 17)
-  } else if (!small) {
-    monitor(f, cx + 15, cy, w.act, tick, seed)
-    desk(f, cx + 1, cy + 9, CELL_W - 3, 4)
-    backPerson(f, cx + 4, cy + 8, look, w.act, tick)
-    text(f, '#' + w.num, cx + 16, cy + 11, label(w))
-    bubble(f, cx + 13, cy + 15, w.act, tick)
-    if (done) check(f, cx + 23, cy + 17)
-  } else if (!back) {
-    person(f, cx + 1, cy + 1, look, w.act, tick)
-    smallMonitor(f, cx + 10, cy + 2, w.act, tick, seed)
-    desk(f, cx + 1, cy + 10, SMALL_W - 2, 3)
-    text(f, '#' + w.num, cx + 2, cy + 12, label(w))
-    if (done) check(f, cx + 14, cy + 13)
+  // x within the cell, mirrored for a column that faces left
+  const cw = small ? SMALL_W : CELL_W
+  const mx = (x: number, width: number) => cx + (left ? cw - x - width : x)
+  if (!small) {
+    bubble(f, mx(9, 5), cy, w.act, tick)
+    sidePerson(f, mx(1, 8), cy + 3, look, w.act, tick, left)
+    monitor(f, mx(14, 11), cy + 2, w.act, tick, seed)
+    desk(f, mx(9, 20), cy + 11, 20, 4)
+    text(f, '#' + w.num, mx(11, 12), cy + 13, label(w))
+    if (done) check(f, mx(24, 4), cy + 13)
   } else {
-    smallMonitor(f, cx + 10, cy, w.act, tick, seed)
-    desk(f, cx + 1, cy + 8, SMALL_W - 2, 3)
-    backPerson(f, cx + 1, cy + 7, look, w.act, tick)
-    text(f, '#' + w.num, cx + 11, cy + 10, label(w))
-    if (done) check(f, cx + 14, cy + 15)
+    sidePerson(f, mx(0, 8), cy + 2, look, w.act, tick, left)
+    smallMonitor(f, mx(11, 9), cy + 1, w.act, tick, seed)
+    desk(f, mx(8, 13), cy + 8, 13, 3)
+    text(f, '#' + w.num, mx(9, 12), cy + 10, label(w))
   }
 }
 
@@ -516,16 +515,16 @@ export function drawOffice(o: Office, width: number, tick: number, extras: Extra
     // the boss scribbles the handoff memo: a paper flies about
     rect(f, mx - 6 + (tick % 4), wy - 1 - (tick % 2), 3, 2, C.white)
   }
-  plant(f, p.wide ? p.w - 7 : p.w - 7, p.wide ? wy + 2 : wy + 1)
+  if (p.w - 7 > mx + 20) plant(f, p.w - 7, p.wide ? wy + 2 : wy + 1)
 
   glassWall(f, p, tick)
 
-  // the bullpen: a desk for each agent, rows in facing pairs, each row centred
+  // the bullpen: a desk for each agent, filling the columns row by row, each pair of columns facing
+  const x0 = Math.floor((p.w - gridWidth(p.cols, p.cellW)) / 2)
   o.workers.forEach((w, i) => {
-    const r = Math.floor(i / p.cols)
-    const inRow = Math.min(p.cols, o.workers.length - r * p.cols)
-    const x0 = Math.floor((p.w - inRow * p.cellW) / 2)
-    station(f, w, x0 + (i % p.cols) * p.cellW, p.deskTop + r * p.cellH, tick, p.small, r % 2 === 1)
+    const c = i % p.cols
+    const cx = x0 + c * p.cellW + Math.floor(c / 2) * AISLE
+    station(f, w, cx, p.deskTop + Math.floor(i / p.cols) * p.cellH, tick, p.small, c % 2 === 1)
   })
   return f
 }

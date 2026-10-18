@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'claude-code/testing'
 
 import { actOf, addTokens, boardLines, detailOf, live, parseBoard, statLines, usageFrom } from './register'
-import { drawOffice, plan, toCells, toSvg } from './draw'
+import { drawOffice, gridWidth, plan, toCells, toSvg } from './draw'
 import type { Office } from '../types'
 
 const PANE_PROPS = {
@@ -89,17 +89,29 @@ describe('the figures', () => {
 })
 
 describe('the bullpen', () => {
-  test('one desk per agent: two facing rows up to 8, three rows of small desks past that', async () => {
-    expect(plan(130, 0, 4).rows).toBe(0)
-    expect(plan(130, 1, 4).rows).toBe(1)
-    expect([plan(130, 5, 4).rows, plan(130, 5, 4).cols, plan(130, 5, 4).small]).toEqual([2, 3, false])
-    expect([plan(130, 8, 4).rows, plan(130, 8, 4).cols, plan(130, 8, 4).small]).toEqual([2, 4, false])
-    expect([plan(130, 9, 4).rows, plan(130, 9, 4).cols, plan(130, 9, 4).small]).toEqual([3, 3, true])
-    expect([plan(130, 18, 4).rows, plan(130, 18, 4).cols]).toEqual([3, 6])
-    // too narrow for that many across: more rows, never a desk off the edge
-    const narrow = plan(64, 8, 4)
-    expect(narrow.cols * narrow.cellW).toBeLessThanOrEqual(64)
-    expect(narrow.cols * narrow.rows).toBeGreaterThanOrEqual(8)
+  test('one desk per agent in facing columns: two up to 8, four columns of small desks past that', async () => {
+    const shape = (w: number, n: number) => {
+      const p = plan(w, n, 4)
+      return [p.cols, p.rows, p.small]
+    }
+    expect(shape(128, 0)).toEqual([0, 0, false])
+    expect(shape(128, 1)).toEqual([1, 1, false])
+    expect(shape(128, 5)).toEqual([2, 3, false])
+    expect(shape(128, 8)).toEqual([2, 4, false])
+    expect(shape(128, 9)).toEqual([4, 3, true])
+    expect(shape(128, 18)).toEqual([4, 5, true])
+    // a terminal too narrow for four columns keeps two, never a desk off the edge
+    expect(shape(64, 12)).toEqual([2, 6, true])
+    for (const [w, n] of [[64, 8], [64, 12], [128, 18]]) {
+      const p = plan(w, n, 4)
+      expect(gridWidth(p.cols, p.cellW)).toBeLessThanOrEqual(p.w)
+    }
+  })
+
+  test('the whiteboard hangs beside the boss from 110 columns, and always on the desktop', async () => {
+    expect(plan(110, 3, 4).wide).toBe(true)
+    expect(plan(128, 3, 4).wide).toBe(true)
+    expect(plan(109, 3, 4).wide).toBe(false)
   })
 
   test('every agent count draws without spilling past the frame', async () => {

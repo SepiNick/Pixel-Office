@@ -10,6 +10,7 @@ const TITLE = 'Pixel Office'
 const DONE_LINGER_MS = 45_000
 const MAX_WORKERS = 18 // 3 rows of small desks, 6 across
 const HANDOFF_AT = 75 // context percent at which the handoff button turns red
+const DESKTOP_W = 128 // the drawing's width on the desktop and mobile, scaled to the pane
 
 export const BOARD_ITEMS: BoardItem[] = ['cache', 'tokens', 'week', 'cost', 'quota', 'ctx', 'time']
 const DEFAULT_BOARD: BoardItem[] = ['cache', 'tokens', 'week', 'cost']
@@ -596,7 +597,9 @@ export const register: Register = on => {
     }
 
     const { Box, Text, Button, Code, Svg } = $.ui.resolve(e)
-    const f = drawOffice(o, Math.min(128, Math.max(64, Math.floor(width * 1.1))), t, extras)
+    // one fixed width the surface scales to its slot: a narrow pane shrinks the picture,
+    // never re-lays it out taller, and the whiteboard always hangs beside the boss
+    const f = drawOffice(o, DESKTOP_W, t, extras)
     const alt = `Pixel office: the boss in his room and ${o.workers.length} agents in the bullpen. ${stats.join(' ')}`
     return (
       <Box flexDirection="column">

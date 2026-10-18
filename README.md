@@ -29,7 +29,7 @@ The boss is the main chat, sitting behind the glass wall of his own room.
 Each subagent gets its own numbered desk, one desk per agent, and its monitor shows what it is doing:
 editing files, reading, terminal, web, planning, or asking you something.
 When it finishes it turns grey and shows Zz.
-Up to 8 agents sit in two rows that face each other across their monitors; past 8 the desks shrink and the bullpen goes to three rows.
+Desks run down the room in columns, each pair of columns facing across their monitors: two columns up to 8 agents, and past 8 smaller desks in four columns.
 
 Under the picture every number is written out in full; cost is shown to 4 decimal places.
 Click a row to open that agent's transcript.
@@ -59,7 +59,7 @@ The pane opens by itself at the start of each session. If you close it, `/office
 > Built and tested on Claude Code 2.1.302.
 > - The 5H and WEEK numbers only appear on Pro and Max accounts
 > - Looks best in a full-screen terminal at least 110 columns wide, or in the Code tab of the desktop app
-> - At 120 columns or wider the whiteboard hangs on the wall beside the boss; narrower, a whiteboard on wheels stands in front of his desk
+> - In the desktop app the whiteboard always hangs beside the boss and the picture shrinks to fit the pane; in a terminal that needs 110 columns or more, and narrower a whiteboard on wheels stands in front of his desk
 
 ---
 
@@ -90,7 +90,7 @@ The pane opens by itself at the start of each session. If you close it, `/office
 هر ساب‌ایجنت میز شماره‌دار خودش رو داره، یعنی به تعداد ایجنت‌ها میز هست، و مانیتورش نشون میده مشغول چیه:
 ویرایش فایل، خوندن، ترمینال، وب، برنامه‌ریزی یا پرسیدن از تو.
 وقتی کارش تموم بشه خاکستری میشه و Zz نشون میده.
-تا ۸ ایجنت، توی دو ردیف روبروی هم می‌شینن؛ از ۸ تا بیشتر بشن، میزها کوچیک میشن و سه ردیف میشن.
+میزها توی ستون‌های عمودی چیده میشن و هر دو ستون روبروی هم‌ان: تا ۸ ایجنت دو ستون، از ۸ تا بیشتر بشن میزها کوچیک‌تر میشن و چهار ستون میشن.
 
 زیر تصویر همه عددها با جزئیات کامل نوشته میشن. هزینه با ۴ رقم اعشار نمایش داده میشه.
 با کلیک روی هر ردیف، ترنسکریپت همون ایجنت باز میشه.
@@ -126,6 +126,6 @@ The pane opens by itself at the start of each session. If you close it, `/office
 > ساخته‌شده و تست‌شده روی Claude Code 2.1.302.
 > - عددهای 5H و WEEK فقط برای اکانت‌های Pro و Max میان
 > - بهترین نمایش: ترمینال تمام‌صفحه با عرض ۱۱۰ ستون به بالا، یا تب Code در اپ دسکتاپ
-> - توی عرض ۱۲۰ به بالا، تخته روی دیوار کنار رئیس میاد؛ توی عرض کمتر، یه تخته چرخدار جلوی میزش وایمیسه
+> - توی اپ دسکتاپ تخته همیشه کنار رئیس روی دیواره و تصویر به اندازه‌ی پنل کوچیک میشه؛ توی ترمینال این از عرض ۱۱۰ ستون به بالاست و توی عرض کمتر، یه تخته چرخدار جلوی میزش وایمیسه
 
 </div>
