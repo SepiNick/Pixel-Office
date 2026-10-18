@@ -116,7 +116,7 @@ describe('the bullpen', () => {
 
   test('every agent count draws without spilling past the frame', async () => {
     const board = boardLines(['cache', 'tokens', 'week', 'cost'], sample, NOW)
-    for (const n of [0, 1, 2, 5, 8, 9, 12, 18])
+    for (const n of [0, 1, 2, 5, 8, 9, 12, 18, 25, 32])
       for (const width of [64, 120, 160]) {
         const workers = Array.from({ length: n }, (_, i) => ({ ...sample.workers[i % 3], id: 'w' + i, num: i + 1 }))
         const f = drawOffice({ ...sample, workers }, width, 3, { board })

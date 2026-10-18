@@ -8,7 +8,7 @@ import { drawOffice, toCells, toSvg } from './draw'
 const PANE = 'pixel-office'
 const TITLE = 'Pixel Office'
 const DONE_LINGER_MS = 45_000
-const MAX_WORKERS = 18 // 3 rows of small desks, 6 across
+const MAX_WORKERS = 32 // small desks, four columns of up to 8
 const HANDOFF_AT = 75 // context percent at which the handoff button turns red
 const DESKTOP_W = 128 // the drawing's width on the desktop and mobile, scaled to the pane
 
