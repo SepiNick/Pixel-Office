@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'claude-code/testing'
 
-import { actOf, addTokens, boardLines, detailOf, parseBoard, statLines, usageFrom } from './register'
+import { actOf, addTokens, boardLines, detailOf, live, parseBoard, statLines, usageFrom } from './register'
 import { drawOffice, plan, toCells, toSvg } from './draw'
 import type { Office } from '../types'
 
@@ -65,11 +65,20 @@ describe('the figures', () => {
 
   test('the whiteboard and the words say the same thing', async () => {
     const lines = boardLines(['cache', 'tokens', 'week', 'cost'], sample, NOW)
-    expect(lines.map(l => l.label + ' ' + l.value)).toEqual(['CACHE 1.2M 89%', 'TOKENS 1.4M', 'WEEK 62% 41H', 'COST $3.18'])
+    expect(lines.map(l => l.label + ' ' + l.value)).toEqual(['CACHE 1.2M 89%', 'TOKENS 1.4M', 'WEEK 38% 41H', 'COST $3.18'])
     const words = statLines(sample, NOW).join('\n')
-    expect(words).toContain('62% left · resets in 41h 0m')
+    expect(words).toContain('38% used · resets in 41h 0m')
+    expect(words).toContain('5-hour limit: 41% used')
+    expect(words).toContain('Context: 63% used')
     expect(words).toContain('$3.1842')
     expect(words).toContain('89% hit rate')
+  })
+
+  test('a window past its reset reads 0% used until the next response says otherwise', async () => {
+    const u = live({ quotaUsed: 92, quotaResetsAt: new Date(NOW - 1000).toISOString(), weeklyUsed: 38, weeklyResetsAt: new Date(NOW + HOUR).toISOString() }, NOW)
+    expect(u.quotaUsed).toBe(0)
+    expect(u.quotaResetsAt).toBeUndefined()
+    expect(u.weeklyUsed).toBe(38)
   })
 
   test('/board takes names and aliases', async () => {

@@ -11,13 +11,13 @@ A mod for Claude Code that shows an 8-bit office in the style of *The Office*, r
 ### The boss's office
 The boss is the main chat, sitting behind the glass wall of his own room.
 - **Two clocks on the wall behind him**:
-  - `5H`: how much of the 5-hour quota is left
+  - `5H`: how much of the 5-hour quota is used, the same number Claude shows
   - `CTX`: how much of this chat's context window is used, the same number the chat shows
   - Colours go green, yellow, red as room runs out; when almost nothing is left the clock's rim blinks
 - **The whiteboard** shows by default:
   - `CACHE`: tokens read from cache, plus the hit rate
   - `TOKENS`: all tokens used in the session, agents included
-  - `WEEK`: how much of the weekly limit is left, plus hours until it resets
+  - `WEEK`: how much of the weekly limit is used, plus hours until it resets
   - `COST`: what this session has cost, in dollars
   - Pick what goes on the board with `/board`, e.g. `/board week cost cache ctx time`
     - Items: `cache tokens week cost quota ctx time`
@@ -71,13 +71,13 @@ The pane opens by itself at the start of each session. If you close it, `/office
 ### اتاق رئیس
 رئیس همون چت اصلیه و پشت دیوار شیشه‌ای اتاق خودش نشسته.
 - **دو ساعت پشت سرش**:
-  - `5H`: درصد باقی‌مونده از سهمیه ۵ساعته
+  - `5H`: درصد مصرف‌شده از سهمیه ۵ساعته، همون عددی که خود Claude نشون میده
   - `CTX`: درصد مصرف‌شده از کانتکس ویندوی همین چت، همون عددی که خود چت نشون میده
   - رنگ‌ها: سبز، زرد، قرمز، هرچی جا کمتر بشه. وقتی تقریباً جایی نمونده، قاب ساعت چشمک می‌زنه
 - **تخته سفید**: به‌طور پیش‌فرض این‌ها رو نشون میده:
   - `CACHE`: توکن‌هایی که از کش خونده شده + درصد hit rate
   - `TOKENS`: کل توکن‌های مصرفی سشن، با احتساب ایجنت‌ها
-  - `WEEK`: درصد باقی‌مونده از لیمیت هفتگی + چند ساعت تا ریست
+  - `WEEK`: درصد مصرف‌شده از لیمیت هفتگی + چند ساعت تا ریست
   - `COST`: هزینه همین سشن به دلار
   - با `/board` انتخاب می‌کنی چی روی تخته باشه. مثال: `/board week cost cache ctx time`
     - گزینه‌ها: `cache tokens week cost quota ctx time`

@@ -406,18 +406,16 @@ export function drawOffice(o: Office, width: number, tick: number, extras: Extra
   const mx = p.mx
   const wy = p.wall
 
-  // the two clocks on the wall behind the boss: quota left and context left
-  const q = o.usage.quotaUsed === undefined ? undefined : Math.max(0, 100 - o.usage.quotaUsed)
-  const c = o.usage.ctxPercent === undefined ? undefined : Math.max(0, 100 - o.usage.ctxPercent)
+  // the two clocks on the wall behind the boss: 5-hour quota and context, each the share used,
+  // as Claude's own meters show it; colour and blink follow what is left
   const ccy = wy - 25
-  for (const [x, left, label] of [
-    [mx - p.clockOff, q, '5H'],
-    [mx + p.clockOff, c, 'CTX'],
+  for (const [x, used, label] of [
+    [mx - p.clockOff, o.usage.quotaUsed, '5H'],
+    [mx + p.clockOff, o.usage.ctxPercent, 'CTX'],
   ] as [number, number | undefined, string][]) {
-    // CTX shows the used share, matching the chat's own context meter; colour still follows what is left
-    const shown = left === undefined ? undefined : label === 'CTX' ? 100 - left : left
-    clock(f, x, ccy, 8, left, tick, shown)
-    const n = shown === undefined ? '--' : Math.round(shown) + '%'
+    const left = used === undefined ? undefined : Math.max(0, 100 - used)
+    clock(f, x, ccy, 8, left, tick, used)
+    const n = used === undefined ? '--' : Math.round(used) + '%'
     text(f, n, x - Math.floor(textWidth(n) / 2), ccy + 10, left === undefined ? C.dim : levelColor(left / 100))
     text(f, label, x - Math.floor(textWidth(label) / 2), ccy + 16, C.dim)
   }

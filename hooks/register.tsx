@@ -112,6 +112,15 @@ export function usageFrom(u: Partial<Pick<SessionUsage, 'context' | 'rateLimits'
   return out
 }
 
+/** A window whose reset time has passed is back to 0% used, even before the next response reports it. */
+export function live(u: Usage, now: number): Usage {
+  const out = { ...u }
+  const gone = (iso?: string) => iso !== undefined && Date.parse(iso) <= now
+  if (gone(out.quotaResetsAt)) (out.quotaUsed = 0), delete out.quotaResetsAt
+  if (gone(out.weeklyResetsAt)) (out.weeklyUsed = 0), delete out.weeklyResetsAt
+  return out
+}
+
 export function addTokens(t: Tokens, u: TurnUsage | undefined): Tokens {
   if (!u) return t
   return {
@@ -169,17 +178,17 @@ export function boardLines(items: BoardItem[], o: Office, now: number): BoardLin
         return { label: 'TOKENS', value: t.turns ? kTok(total(t)) : '--' }
       case 'week': {
         if (u.weeklyUsed === undefined) return { label: 'WEEK', value: '--' }
-        const left = Math.max(0, Math.round(100 - u.weeklyUsed))
+        const used = Math.round(u.weeklyUsed)
         const h = hoursUntil(u.weeklyResetsAt, now)
-        return { label: 'WEEK', value: `${left}%${h === undefined ? '' : ' ' + Math.ceil(h) + 'H'}`, tone: tone(left) }
+        return { label: 'WEEK', value: `${used}%${h === undefined ? '' : ' ' + Math.ceil(h) + 'H'}`, tone: tone(100 - used) }
       }
       case 'cost':
         return { label: 'COST', value: u.costUsd === undefined ? '--' : money(u.costUsd) }
       case 'quota': {
         if (u.quotaUsed === undefined) return { label: '5H', value: '--' }
-        const left = Math.max(0, Math.round(100 - u.quotaUsed))
+        const used = Math.round(u.quotaUsed)
         const h = hoursUntil(u.quotaResetsAt, now)
-        return { label: '5H', value: `${left}%${h === undefined ? '' : ' ' + hm(h).toUpperCase().replace(/M$/, '')}`, tone: tone(left) }
+        return { label: '5H', value: `${used}%${h === undefined ? '' : ' ' + hm(h).toUpperCase().replace(/M$/, '')}`, tone: tone(100 - used) }
       }
       case 'ctx': {
         if (u.ctxPercent === undefined) return { label: 'CTX', value: '--' }
@@ -215,17 +224,17 @@ export function statLines(o: Office, now: number): string[] {
   else {
     const h = hoursUntil(u.weeklyResetsAt, now)
     lines.push(
-      `⏳ Weekly limit: ${Math.max(0, Math.round(100 - u.weeklyUsed))}% left` +
+      `⏳ Weekly limit: ${Math.round(u.weeklyUsed)}% used` +
         (h === undefined ? '' : ` · resets in ${Math.floor(h)}h ${Math.round((h % 1) * 60)}m`),
     )
   }
   if (u.quotaUsed !== undefined) {
     const h = hoursUntil(u.quotaResetsAt, now)
-    lines.push(`⏱ 5-hour limit: ${Math.max(0, Math.round(100 - u.quotaUsed))}% left${h === undefined ? '' : ` · resets in ${hm(h)}`}`)
+    lines.push(`⏱ 5-hour limit: ${Math.round(u.quotaUsed)}% used${h === undefined ? '' : ` · resets in ${hm(h)}`}`)
   }
   if (u.ctxPercent !== undefined) {
     const free = u.ctxWindow !== undefined && u.ctxTokens !== undefined ? u.ctxWindow - u.ctxTokens : undefined
-    lines.push(`🧠 Context left: ${Math.max(0, 100 - u.ctxPercent)}% (${kTok(free)} of ${kTok(u.ctxWindow)} free)`)
+    lines.push(`🧠 Context: ${u.ctxPercent}% used (${kTok(free)} of ${kTok(u.ctxWindow)} free)`)
   }
   lines.push(`💸 This session: ${u.costUsd === undefined ? 'no cost yet' : '$' + u.costUsd.toFixed(4)}`)
   return lines
@@ -513,11 +522,12 @@ export const register: Register = on => {
   })
 
   on('ui.render', { component: 'Pane', requestId: PANE }, async ($, e) => {
-    const o = await read($, office)
+    const now = await $.clock.now()
+    const raw = await read($, office)
+    const o = { ...raw, usage: live(raw.usage, now) }
     const t = await read($, tick)
     const items = await read($, board)
     const ho = await read($, handoff)
-    const now = await $.clock.now()
     const width = e.props.bodyColumns
     const extras = {
       board: boardLines(items, o, now),
@@ -562,9 +572,6 @@ export const register: Register = on => {
           <Raster key="office" columns={r.columns} rows={r.rows} cells={r.cells} />
           <Button key="handoff" hotkey="h" variant={full ? 'primary' : 'secondary'} label={hoLabel} onPress={press} />
           {hoNote ? <Text dimColor>{hoNote}</Text> : null}
-        {ready ? <Code source={ho.prompt ?? ''} /> : null}
-        {ready ? <Button key="copy" label="Copy the prompt again" onPress={again} /> : null}
-        {ready && ho.file ? <Button key="term" label="Open in a new terminal" onPress={term} /> : null}
           {ready ? <Code source={ho.prompt ?? ''} /> : null}
           {ready ? <Button key="copy" hotkey="c" label="Copy the prompt again" onPress={again} /> : null}
           {ready && ho.file ? <Button key="term" hotkey="t" label="Open in a new terminal" onPress={term} /> : null}
