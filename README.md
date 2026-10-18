@@ -30,6 +30,7 @@ Each subagent gets its own numbered desk, one desk per agent, and its monitor sh
 editing files, reading, terminal, web, planning, or asking you something.
 When it finishes it turns grey and shows Zz.
 Desks run down the room in columns, each pair of columns facing across their monitors: two columns up to 8 agents, and past 8 smaller desks in four columns.
+The bullpen seats up to 32 agents. Claude Code itself runs at most 20 subagents at once by default (`CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS` raises that); tested with 20 running together.
 
 Under the picture every number is written out in full; cost is shown to 4 decimal places.
 Click a row to open that agent's transcript.
@@ -91,6 +92,7 @@ The pane opens by itself at the start of each session. If you close it, `/office
 ویرایش فایل، خوندن، ترمینال، وب، برنامه‌ریزی یا پرسیدن از تو.
 وقتی کارش تموم بشه خاکستری میشه و Zz نشون میده.
 میزها توی ستون‌های عمودی چیده میشن و هر دو ستون روبروی هم‌ان: تا ۸ ایجنت دو ستون، از ۸ تا بیشتر بشن میزها کوچیک‌تر میشن و چهار ستون میشن.
+سالن تا ۳۲ ایجنت جا داره. خود Claude Code به‌طور پیش‌فرض حداکثر ۲۰ ساب‌ایجنت رو هم‌زمان اجرا می‌کنه (با `CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS` بیشترش کن)؛ با ۲۰ ایجنت هم‌زمان تست شده.
 
 زیر تصویر همه عددها با جزئیات کامل نوشته میشن. هزینه با ۴ رقم اعشار نمایش داده میشه.
 با کلیک روی هر ردیف، ترنسکریپت همون ایجنت باز میشه.
