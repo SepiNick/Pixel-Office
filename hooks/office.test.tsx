@@ -88,6 +88,31 @@ describe('the figures', () => {
   })
 })
 
+describe('the bullpen', () => {
+  test('one desk per agent: two facing rows up to 8, three rows of small desks past that', async () => {
+    expect(plan(130, 0, 4).rows).toBe(0)
+    expect(plan(130, 1, 4).rows).toBe(1)
+    expect([plan(130, 5, 4).rows, plan(130, 5, 4).cols, plan(130, 5, 4).small]).toEqual([2, 3, false])
+    expect([plan(130, 8, 4).rows, plan(130, 8, 4).cols, plan(130, 8, 4).small]).toEqual([2, 4, false])
+    expect([plan(130, 9, 4).rows, plan(130, 9, 4).cols, plan(130, 9, 4).small]).toEqual([3, 3, true])
+    expect([plan(130, 18, 4).rows, plan(130, 18, 4).cols]).toEqual([3, 6])
+    // too narrow for that many across: more rows, never a desk off the edge
+    const narrow = plan(64, 8, 4)
+    expect(narrow.cols * narrow.cellW).toBeLessThanOrEqual(64)
+    expect(narrow.cols * narrow.rows).toBeGreaterThanOrEqual(8)
+  })
+
+  test('every agent count draws without spilling past the frame', async () => {
+    const board = boardLines(['cache', 'tokens', 'week', 'cost'], sample, NOW)
+    for (const n of [0, 1, 2, 5, 8, 9, 12, 18])
+      for (const width of [64, 120, 160]) {
+        const workers = Array.from({ length: n }, (_, i) => ({ ...sample.workers[i % 3], id: 'w' + i, num: i + 1 }))
+        const f = drawOffice({ ...sample, workers }, width, 3, { board })
+        expect(f.px.length).toBe(f.w * f.h)
+      }
+  })
+})
+
 describe('the pixels', () => {
   test('narrow and wide offices pack into cells and an svg', async () => {
     const board = boardLines(['cache', 'tokens', 'week', 'cost'], sample, NOW)

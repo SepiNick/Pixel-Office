@@ -26,9 +26,10 @@ The boss is the main chat, sitting behind the glass wall of his own room.
   - Your choice is remembered for later sessions
 
 ### The bullpen
-Each subagent works at a numbered desk, and its monitor shows what it is doing:
+Each subagent gets its own numbered desk, one desk per agent, and its monitor shows what it is doing:
 editing files, reading, terminal, web, planning, or asking you something.
 When it finishes it turns grey and shows Zz.
+Up to 8 agents sit in two rows that face each other across their monitors; past 8 the desks shrink and the bullpen goes to three rows.
 
 Under the picture every number is written out in full; cost is shown to 4 decimal places.
 Click a row to open that agent's transcript.
@@ -86,9 +87,10 @@ The pane opens by itself at the start of each session. If you close it, `/office
   - انتخابت برای سشن‌های بعدی هم ذخیره میشه
 
 ### سالن
-هر ساب‌ایجنت پشت یه میز شماره‌دار کار می‌کنه و مانیتورش نشون میده مشغول چیه:
+هر ساب‌ایجنت میز شماره‌دار خودش رو داره، یعنی به تعداد ایجنت‌ها میز هست، و مانیتورش نشون میده مشغول چیه:
 ویرایش فایل، خوندن، ترمینال، وب، برنامه‌ریزی یا پرسیدن از تو.
 وقتی کارش تموم بشه خاکستری میشه و Zz نشون میده.
+تا ۸ ایجنت، توی دو ردیف روبروی هم می‌شینن؛ از ۸ تا بیشتر بشن، میزها کوچیک میشن و سه ردیف میشن.
 
 زیر تصویر همه عددها با جزئیات کامل نوشته میشن. هزینه با ۴ رقم اعشار نمایش داده میشه.
 با کلیک روی هر ردیف، ترنسکریپت همون ایجنت باز میشه.

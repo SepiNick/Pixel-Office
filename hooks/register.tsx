@@ -8,7 +8,7 @@ import { drawOffice, toCells, toSvg } from './draw'
 const PANE = 'pixel-office'
 const TITLE = 'Pixel Office'
 const DONE_LINGER_MS = 45_000
-const MAX_WORKERS = 12
+const MAX_WORKERS = 18 // 3 rows of small desks, 6 across
 const HANDOFF_AT = 75 // context percent at which the handoff button turns red
 
 export const BOARD_ITEMS: BoardItem[] = ['cache', 'tokens', 'week', 'cost', 'quota', 'ctx', 'time']
@@ -483,7 +483,14 @@ export const register: Register = on => {
     return next(e)
   })
 
-  on('tool.call', async ($, e, next) => {
+  // The boss handing work out. Not a tool.call hook on Agent: that hook would stay open for the
+  // whole run, and a subagent's own events, raised beneath it, would never reach this module.
+  on('agent.spawn', async ($, e, next) => {
+    await setWho($, undefined, { act: 'agent', detail: cut(e.description, 40) })
+    return next(e)
+  })
+
+  on('tool.call', { tool: /^(?!(Agent|Task|Workflow)$)/ }, async ($, e, next) => {
     const id = e.agentId
     if (id !== undefined) await ensureWorker($, id)
     const args = e as unknown as Record<string, unknown>

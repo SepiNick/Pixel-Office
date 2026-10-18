@@ -9,8 +9,12 @@ import type { Act, Office, Worker } from '../types'
 export type Frame = { w: number; h: number; px: Uint32Array; base: Uint32Array }
 export type BoardLine = { label: string; value: string; tone?: 'ok' | 'warn' | 'bad' }
 
+// a desk's footprint: full size up to 8 agents, small past that
 const CELL_W = 30
 const CELL_H = 24
+const SMALL_W = 20
+const SMALL_H = 18
+const SMALL_PAST = 8
 
 const C = {
   wall: 0x3b2e5a,
@@ -108,6 +112,9 @@ export type Plan = {
   deskTop: number // the bullpen's first row
   cols: number
   rows: number
+  small: boolean
+  cellW: number
+  cellH: number
 }
 
 export function plan(width: number, workers: number, boardLines: number): Plan {
@@ -134,11 +141,18 @@ export function plan(width: number, workers: number, boardLines: number): Plan {
   }
   const clockOff = Math.max(13, Math.min(22, Math.floor((wide ? w - board.w - 8 : w) / 2) - 10))
   const deskTop = roomEnd + 5
-  const cols = Math.max(1, Math.floor((w - 2) / CELL_W))
-  const rows = Math.max(1, Math.ceil(workers / cols))
-  let h = deskTop + rows * CELL_H + 1
+  // one desk per agent: two rows facing each other, three rows of small desks past 8;
+  // a pane too narrow for that many across gets extra rows instead
+  const small = workers > SMALL_PAST
+  const cellW = small ? SMALL_W : CELL_W
+  const cellH = small ? SMALL_H : CELL_H
+  const fit = Math.max(1, Math.floor((w - 2) / cellW))
+  const want = workers <= 1 ? workers : workers <= SMALL_PAST ? 2 : 3
+  const cols = Math.min(fit, Math.max(1, Math.ceil(workers / Math.max(1, want))))
+  const rows = Math.ceil(workers / cols)
+  let h = deskTop + Math.max(rows * cellH, 6) + 1
   if (h % 2) h++
-  return { w, h, wide, wall, mx, clockOff, board, roomEnd, deskTop, cols, rows }
+  return { w, h, wide, wall, mx, clockOff, board, roomEnd, deskTop, cols, rows, small, cellW, cellH }
 }
 
 /** The floor under everything: wall, the boss's carpet, the bullpen's planks. */
@@ -221,6 +235,37 @@ const SPRITE = [
   'BBBBBBBB',
 ]
 
+// the same person seen from behind, for the row that faces back across the desks
+const BACK = [
+  '..HHHH..',
+  '.HHHHHH.',
+  '.HHHHHH.',
+  '.HHHHHH.',
+  '.SHHHHS.',
+  '..SSSS..',
+  '.BBBBBB.',
+  'BBBBBBBB',
+  'BBBBBBBB',
+  'BBBBBBBB',
+]
+
+function backPerson(f: Frame, x: number, y: number, look: Look, act: Act, tick: number) {
+  const k = (c: number) => (look.dim ? grey(c) : c)
+  const bob = act === 'think' || act === 'idle' ? (tick % 4 === 0 ? 1 : 0) : 0
+  BACK.forEach((row, ry) => {
+    for (let rx = 0; rx < 8; rx++) {
+      const ch = row[rx]
+      const c = ch === 'H' ? look.hair : ch === 'S' ? look.skin : ch === 'B' ? look.shirt : undefined
+      if (c !== undefined) set(f, x + rx, y + ry + (ry < 6 ? bob : 0), k(c))
+    }
+  })
+  // elbows working at the keyboard, seen from behind
+  const busy = act === 'type' || act === 'bash' || act === 'plan' || act === 'tool'
+  const up = busy ? tick % 2 : 0
+  set(f, x - 1, y + 6 + up, k(look.shirt))
+  set(f, x + 8, y + 7 - up, k(look.shirt))
+}
+
 function person(f: Frame, x: number, y: number, look: Look, act: Act, tick: number) {
   const k = (c: number) => (look.dim ? grey(c) : c)
   const bob = act === 'think' || act === 'idle' ? (tick % 4 === 0 ? 1 : 0) : 0
@@ -251,8 +296,8 @@ function person(f: Frame, x: number, y: number, look: Look, act: Act, tick: numb
   if (act === 'read') rect(f, x + 2, y + 7, 4, 3, look.dim ? 0xaaaaaa : C.white)
 }
 
-function screen(f: Frame, x: number, y: number, act: Act, tick: number, seed: number) {
-  const w = 9, h = 5
+function screen(f: Frame, x: number, y: number, act: Act, tick: number, seed: number, w = 9) {
+  const h = 5
   const bg: Record<Act, number> = {
     type: 0x1e3a8a, read: 0xf1f5f9, bash: 0x0a0a0a, web: 0x0ea5e9, agent: 0xf97316,
     plan: 0xfef08a, ask: 0x7f1d1d, tool: 0x6d28d9, think: 0x1f2937, idle: 0x111827, done: 0x000000,
@@ -270,7 +315,7 @@ function screen(f: Frame, x: number, y: number, act: Act, tick: number, seed: nu
     set(f, x + 1, y + 1, C.green)
     set(f, x + 2, y + 2, C.green)
     set(f, x + 1, y + 3, C.green)
-    const n = Math.min(4, 1 + (tick % 5))
+    const n = Math.min(w - 5, 1 + (tick % 5))
     rect(f, x + 4, y + 2, n, 1, C.green)
     if (tick % 2) set(f, x + 4 + n, y + 2, C.white)
   } else if (act === 'web') {
@@ -281,12 +326,12 @@ function screen(f: Frame, x: number, y: number, act: Act, tick: number, seed: nu
   } else if (act === 'agent') {
     set(f, x + 4, y + 1, C.white)
     rect(f, x + 3, y + 2, 3, 2, C.white)
-    set(f, x + (tick % 2 ? 7 : 1), y + 2, C.white)
+    set(f, x + (tick % 2 ? w - 2 : 1), y + 2, C.white)
   } else if (act === 'plan') {
     for (let i = 0; i < 2; i++) {
       const done = (tick / 2 + i) % 4 < 2
       set(f, x + 1, y + 1 + i * 2, done ? 0x16a34a : 0x444444)
-      rect(f, x + 3, y + 1 + i * 2, 5, 1, 0x78716c)
+      rect(f, x + 3, y + 1 + i * 2, w - 4, 1, 0x78716c)
     }
   } else if (act === 'ask') {
     if (tick % 2) text(f, '?', x + 3, y, C.yellow)
@@ -324,24 +369,57 @@ function bubble(f: Frame, x: number, y: number, act: Act, tick: number) {
   }
 }
 
-function station(f: Frame, w: Worker, cx: number, cy: number, tick: number) {
-  const seed = hash(w.id) % 7
-  bubble(f, cx + 6, cy, w.act, tick)
-  person(f, cx + 4, cy + 6, lookFor(w), w.act, tick)
-  monitor(f, cx + 15, cy + 5, w.act, tick, seed)
-  desk(f, cx + 1, cy + 14, CELL_W - 3, 6)
-  text(f, '#' + w.num, cx + 3, cy + 17, w.act === 'done' ? 0x8a6a50 : 0xf5deb3)
-  if (w.act === 'done') {
-    set(f, cx + 22, cy + 18, C.green)
-    set(f, cx + 23, cy + 19, C.green)
-    set(f, cx + 24, cy + 18, C.green)
-    set(f, cx + 25, cy + 17, C.green)
-  }
+/** A small monitor: a 7x5 screen in a 9x7 bezel on a one-pixel stand. */
+function smallMonitor(f: Frame, x: number, y: number, act: Act, tick: number, seed: number) {
+  rect(f, x, y, 9, 7, C.monitor)
+  screen(f, x + 1, y + 1, act, tick, seed, 7)
+  rect(f, x + 3, y + 7, 3, 1, C.monitor)
 }
 
-function emptyDesk(f: Frame, cx: number, cy: number) {
-  rect(f, cx + 15, cy + 9, 11, 5, 0x3a3a44)
-  desk(f, cx + 1, cy + 14, CELL_W - 3, 6)
+function check(f: Frame, x: number, y: number) {
+  set(f, x, y + 1, C.green)
+  set(f, x + 1, y + 2, C.green)
+  set(f, x + 2, y + 1, C.green)
+  set(f, x + 3, y, C.green)
+}
+
+const label = (w: Worker) => (w.act === 'done' ? 0x8a6a50 : 0xf5deb3)
+
+/**
+ * One agent at a desk. A front-facing row sits behind its desks, looking out;
+ * the row below it faces back across the monitors, so the two rows face each other.
+ */
+function station(f: Frame, w: Worker, cx: number, cy: number, tick: number, small: boolean, back: boolean) {
+  const seed = hash(w.id) % 7
+  const look = lookFor(w)
+  const done = w.act === 'done'
+  if (!small && !back) {
+    bubble(f, cx + 6, cy, w.act, tick)
+    person(f, cx + 4, cy + 6, look, w.act, tick)
+    monitor(f, cx + 15, cy + 5, w.act, tick, seed)
+    desk(f, cx + 1, cy + 14, CELL_W - 3, 6)
+    text(f, '#' + w.num, cx + 3, cy + 17, label(w))
+    if (done) check(f, cx + 22, cy + 17)
+  } else if (!small) {
+    monitor(f, cx + 15, cy, w.act, tick, seed)
+    desk(f, cx + 1, cy + 9, CELL_W - 3, 4)
+    backPerson(f, cx + 4, cy + 8, look, w.act, tick)
+    text(f, '#' + w.num, cx + 16, cy + 11, label(w))
+    bubble(f, cx + 13, cy + 15, w.act, tick)
+    if (done) check(f, cx + 23, cy + 17)
+  } else if (!back) {
+    person(f, cx + 1, cy + 1, look, w.act, tick)
+    smallMonitor(f, cx + 10, cy + 2, w.act, tick, seed)
+    desk(f, cx + 1, cy + 10, SMALL_W - 2, 3)
+    text(f, '#' + w.num, cx + 2, cy + 12, label(w))
+    if (done) check(f, cx + 14, cy + 13)
+  } else {
+    smallMonitor(f, cx + 10, cy, w.act, tick, seed)
+    desk(f, cx + 1, cy + 8, SMALL_W - 2, 3)
+    backPerson(f, cx + 1, cy + 7, look, w.act, tick)
+    text(f, '#' + w.num, cx + 11, cy + 10, label(w))
+    if (done) check(f, cx + 14, cy + 15)
+  }
 }
 
 function whiteboard(f: Frame, p: Plan, lines: BoardLine[], tick: number) {
@@ -442,16 +520,13 @@ export function drawOffice(o: Office, width: number, tick: number, extras: Extra
 
   glassWall(f, p, tick)
 
-  // the bullpen
-  const slots = p.cols * p.rows
-  const x0 = Math.floor((p.w - p.cols * CELL_W) / 2)
-  for (let i = 0; i < slots; i++) {
-    const cx = x0 + (i % p.cols) * CELL_W
-    const cy = p.deskTop + Math.floor(i / p.cols) * CELL_H
-    const w = o.workers[i]
-    if (w) station(f, w, cx, cy, tick)
-    else emptyDesk(f, cx, cy)
-  }
+  // the bullpen: a desk for each agent, rows in facing pairs, each row centred
+  o.workers.forEach((w, i) => {
+    const r = Math.floor(i / p.cols)
+    const inRow = Math.min(p.cols, o.workers.length - r * p.cols)
+    const x0 = Math.floor((p.w - inRow * p.cellW) / 2)
+    station(f, w, x0 + (i % p.cols) * p.cellW, p.deskTop + r * p.cellH, tick, p.small, r % 2 === 1)
+  })
   return f
 }
 
