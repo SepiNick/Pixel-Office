@@ -387,18 +387,22 @@ async function openTerminal($: EngineInterface): Promise<void> {
   }
   const cwd = await $.session.cwd()
   const isWindows = (await $.env.get('OS')) === 'Windows_NT' || (await $.env.get('COMSPEC')) !== undefined
+  // POSIX single-quote every value that goes into a shell string, so a quote in a path cannot break out
+  const q = (s: string) => "'" + s.split("'").join(`'"'"'`) + "'"
+  const sh = `cd ${q(cwd)} && claude ${q(ho.prompt)}`
+  const apple = (s: string) => s.replace(/\\/g, '\\\\').replace(/"/g, '\\"')
   const tries: string[][] = isWindows
     ? [
         ['wt.exe', '-d', cwd, 'cmd', '/k', 'claude', ho.prompt],
         ['cmd.exe', '/c', 'start', 'Claude handoff', '/D', cwd, 'cmd', '/k', 'claude', ho.prompt],
       ]
     : (await $.env.get('TERM_PROGRAM')) === 'Apple_Terminal' || (await $.env.get('__CFBundleIdentifier')) !== undefined
-      ? [['osascript', '-e', `tell application "Terminal" to do script "cd '${cwd}' && claude '${ho.prompt}'"`]]
+      ? [['osascript', '-e', `tell application "Terminal" to do script "${apple(sh)}"`]]
       : [
-          ['x-terminal-emulator', '-e', 'bash', '-lc', `cd '${cwd}' && claude '${ho.prompt}'; exec bash`],
-          ['gnome-terminal', '--', 'bash', '-lc', `cd '${cwd}' && claude '${ho.prompt}'; exec bash`],
-          ['konsole', '-e', 'bash', '-lc', `cd '${cwd}' && claude '${ho.prompt}'; exec bash`],
-          ['xterm', '-e', 'bash', '-lc', `cd '${cwd}' && claude '${ho.prompt}'; exec bash`],
+          ['x-terminal-emulator', '-e', 'bash', '-lc', `${sh}; exec bash`],
+          ['gnome-terminal', '--', 'bash', '-lc', `${sh}; exec bash`],
+          ['konsole', '-e', 'bash', '-lc', `${sh}; exec bash`],
+          ['xterm', '-e', 'bash', '-lc', `${sh}; exec bash`],
         ]
   for (const argv of tries) {
     try {
