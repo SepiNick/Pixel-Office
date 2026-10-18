@@ -1,0 +1,14 @@
+{
+  "name": "sepi-mods",
+  "owner": {
+    "name": "Sepi"
+  },
+  "plugins": [
+    {
+      "name": "pixel-office",
+      "source": "./",
+      "description": "8-bit office pane for Claude Code agents"
+    }
+  ],
+  "description": "Sepi's Claude Code mods"
+}
