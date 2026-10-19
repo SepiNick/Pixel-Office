@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'claude-code/testing'
 
-import { actOf, addTokens, boardLines, detailOf, live, parseBoard, statLines, usageFrom } from './register'
+import { actOf, addTokens, boardLines, detailOf, isLandscape, live, parseBoard, statLines, usageFrom } from './register'
 import { drawOffice, gridWidth, plan, toCells, toSvg } from './draw'
 import type { Office } from '../types'
 
@@ -105,6 +105,24 @@ describe('the bullpen', () => {
     for (const [w, n] of [[64, 8], [64, 12], [128, 18]]) {
       const p = plan(w, n, 4)
       expect(gridWidth(p.cols, p.cellW)).toBeLessThanOrEqual(p.w)
+    }
+  })
+
+  test('a landscape pane lays the office out across: room on the left, desks to its right', async () => {
+    expect(isLandscape(200, 40)).toBe(true)
+    expect(isLandscape(64, 60)).toBe(false)
+    expect(isLandscape(100, 0)).toBe(false)
+    const board = boardLines(['cache', 'tokens', 'week', 'cost'], sample, NOW)
+    for (const n of [0, 1, 3, 8, 9, 20, 32]) {
+      const p = plan(128, n, 4, true)
+      expect(p.split).toBeGreaterThan(0)
+      expect(p.split + gridWidth(p.cols, p.cellW)).toBeLessThanOrEqual(p.w)
+      expect(p.cols * p.rows).toBeGreaterThanOrEqual(n)
+      // wider than tall, counting a terminal row as two pixels
+      if (n >= 8) expect(p.w).toBeGreaterThan(p.h)
+      const workers = Array.from({ length: n }, (_, i) => ({ ...sample.workers[i % 3], id: 'w' + i, num: i + 1 }))
+      const f = drawOffice({ ...sample, workers }, 128, 3, { board }, true)
+      expect(toSvg(f).length).toBeLessThan(131_072)
     }
   })
 

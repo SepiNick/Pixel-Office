@@ -3,7 +3,10 @@ import type { EngineInterface, Register, RenderSurface, SessionRateLimit, Sessio
 
 import type { Act, BoardItem, Handoff, Office, Tokens, Usage, Worker } from '../types'
 import type { BoardLine } from './draw'
-import { drawOffice, toCells, toSvg } from './draw'
+import { drawOffice, plan, toCells, toSvg } from './draw'
+
+/** Whether a pane of this many cells is wider than it is tall, a cell being about twice as tall as wide. */
+export const isLandscape = (columns: number, rows: number) => rows > 0 && columns > rows * 2
 
 const PANE = 'pixel-office'
 const TITLE = 'Pixel Office'
@@ -537,6 +540,8 @@ export const register: Register = on => {
     const items = await read($, board)
     const ho = await read($, handoff)
     const width = e.props.bodyColumns
+    // a landscape pane lays the office out across; a cell is about twice as tall as it is wide
+    const across = isLandscape(width, e.props.scroll.bodyRows)
     const extras = {
       board: boardLines(items, o, now),
       handoff: ho.status === 'writing' ? ('writing' as const) : undefined,
@@ -574,7 +579,9 @@ export const register: Register = on => {
 
     if (e.surface === 'terminal') {
       const { Box, Text, Button, Code, Raster } = $.ui.resolve(e)
-      const r = toCells(drawOffice(o, width, t, extras))
+      // the terminal cannot shrink the picture: across only where its full width fits
+      const fits = across && plan(width, o.workers.length, extras.board.length, true).w <= width
+      const r = toCells(drawOffice(o, width, t, extras, fits))
       return (
         <Box flexDirection="column">
           <Raster key="office" columns={r.columns} rows={r.rows} cells={r.cells} />
@@ -599,7 +606,7 @@ export const register: Register = on => {
     const { Box, Text, Button, Code, Svg } = $.ui.resolve(e)
     // one fixed width the surface scales to its slot: a narrow pane shrinks the picture,
     // never re-lays it out taller, and the whiteboard always hangs beside the boss
-    const f = drawOffice(o, DESKTOP_W, t, extras)
+    const f = drawOffice(o, DESKTOP_W, t, extras, across)
     const alt = `Pixel office: the boss in his room and ${o.workers.length} agents in the bullpen. ${stats.join(' ')}`
     return (
       <Box flexDirection="column">

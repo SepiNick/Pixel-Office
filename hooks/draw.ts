@@ -118,9 +118,19 @@ export type Plan = {
   small: boolean
   cellW: number
   cellH: number
+  /** Laid out across (a landscape pane): the room is a column on the left, the bullpen starts at this x. 0 when stacked. */
+  split: number
 }
 
-export function plan(width: number, workers: number, boardLines: number): Plan {
+/** The room's width when the office is laid out across. */
+const ROOM_ACROSS = 64
+
+/**
+ * The floor plan. Stacked (a portrait pane): the boss's room on top, the bullpen below it.
+ * Across (a landscape pane): the room down the left, behind a glass wall, the bullpen to its right.
+ */
+export function plan(width: number, workers: number, boardLines: number, across = false): Plan {
+  if (across) return planAcross(workers, boardLines)
   const w = Math.max(64, Math.min(160, width))
   const wide = w >= WIDE_FROM
   const lines = Math.max(1, boardLines)
@@ -153,7 +163,26 @@ export function plan(width: number, workers: number, boardLines: number): Plan {
   const rows = cols ? Math.ceil(workers / cols) : 0
   let h = deskTop + Math.max(rows * cellH, 6) + 1
   if (h % 2) h++
-  return { w, h, wide, wall, mx, clockOff, board, roomEnd, deskTop, cols, rows, small, cellW, cellH }
+  return { w, h, wide, wall, mx, clockOff, board, roomEnd, deskTop, cols, rows, small, cellW, cellH, split: 0 }
+}
+
+function planAcross(workers: number, boardLines: number): Plan {
+  // the room is the narrow stacked room, standing on its side of a vertical glass wall
+  const room = plan(ROOM_ACROSS, 0, boardLines)
+  const split = ROOM_ACROSS + 6 // the glass wall, then the bullpen
+  const small = workers > SMALL_PAST
+  const cellW = small ? SMALL_W : CELL_W
+  const cellH = small ? SMALL_H : CELL_H
+  // desks fill the room's height, then spill into more facing pairs to the right
+  const deskTop = 4
+  const fitRows = Math.max(1, Math.floor((room.roomEnd - deskTop) / cellH))
+  let cols = workers <= fitRows ? Math.min(workers, 1) : Math.ceil(workers / fitRows)
+  if (cols > 1 && cols % 2) cols++
+  const rows = cols ? Math.ceil(workers / cols) : 0
+  const w = split + Math.max(gridWidth(cols, cellW), 24) + 4
+  let h = Math.max(room.roomEnd, deskTop + rows * cellH + 1)
+  if (h % 2) h++
+  return { ...room, w, h, roomEnd: h, deskTop, cols, rows, small, cellW, cellH, split }
 }
 
 /** How wide `cols` columns of desks are, an aisle between each facing pair. */
@@ -162,7 +191,8 @@ export function gridWidth(cols: number, cellW: number) {
 }
 
 /** The floor under everything: wall, the boss's carpet, the bullpen's planks. */
-export function baseColor(p: Plan, y: number): number {
+export function baseColor(p: Plan, y: number, x = 0): number {
+  if (p.split && x >= p.split - 6) return y % 6 === 5 ? C.plank : C.floor // the open-plan bullpen, floor to the top
   if (y < p.wall - 1) return C.wall
   if (y === p.wall - 1) return C.wallTrim
   if (y < p.roomEnd) return (y - p.wall) % 4 === 3 ? C.carpetLine : C.carpet
@@ -171,10 +201,7 @@ export function baseColor(p: Plan, y: number): number {
 
 function newFrame(p: Plan): Frame {
   const px = new Uint32Array(p.w * p.h)
-  for (let y = 0; y < p.h; y++) {
-    const c = baseColor(p, y)
-    for (let x = 0; x < p.w; x++) px[y * p.w + x] = c
-  }
+  for (let y = 0; y < p.h; y++) for (let x = 0; x < p.w; x++) px[y * p.w + x] = baseColor(p, y, x)
   return { w: p.w, h: p.h, px, base: px.slice() }
 }
 
@@ -450,7 +477,25 @@ function whiteboard(f: Frame, p: Plan, lines: BoardLine[], tick: number) {
   if (tick % 10 === 0) set(f, b.x + b.w - 3, b.y + 2, C.inkBad)
 }
 
+/** The same glass wall standing upright, between the room on the left and the bullpen. */
+function glassWallUpright(f: Frame, p: Plan, tick: number) {
+  const x = p.split - 6
+  const doorY = p.h - 14
+  for (let y = 0; y < p.h; y++) {
+    if (y >= doorY && y < doorY + 10) continue // the open door
+    set(f, x, y, C.frame)
+    set(f, x + 3, y, C.frame)
+    const mullion = (y - p.wall) % 12 === 0
+    set(f, x + 1, y, mullion ? C.frame : C.glass)
+    set(f, x + 2, y, mullion ? C.frame : (y + tick) % 24 < 2 ? C.glassShine : C.glass)
+  }
+  rect(f, x, doorY - 1, 4, 1, C.frame)
+  rect(f, x, doorY + 10, 4, 1, C.frame)
+  rect(f, x + 4, doorY, 6, 1, 0x9a6a3a) // the door, swung open into the bullpen
+}
+
 function glassWall(f: Frame, p: Plan, tick: number) {
+  if (p.split) return glassWallUpright(f, p, tick)
   const y = p.roomEnd
   const doorX = p.wide ? p.w - 18 : 4
   for (let x = 0; x < p.w; x++) {
@@ -477,8 +522,8 @@ function plant(f: Frame, x: number, y: number) {
 
 export type Extras = { board: BoardLine[]; handoff?: 'writing' | 'sent' }
 
-export function drawOffice(o: Office, width: number, tick: number, extras: Extras): Frame {
-  const p = plan(width, o.workers.length, extras.board.length)
+export function drawOffice(o: Office, width: number, tick: number, extras: Extras, across = false): Frame {
+  const p = plan(width, o.workers.length, extras.board.length, across)
   const f = newFrame(p)
   const mx = p.mx
   const wy = p.wall
@@ -515,12 +560,13 @@ export function drawOffice(o: Office, width: number, tick: number, extras: Extra
     // the boss scribbles the handoff memo: a paper flies about
     rect(f, mx - 6 + (tick % 4), wy - 1 - (tick % 2), 3, 2, C.white)
   }
-  if (p.w - 7 > mx + 20) plant(f, p.w - 7, p.wide ? wy + 2 : wy + 1)
+  if (p.split) plant(f, p.split - 12, wy + 1)
+  else if (p.w - 7 > mx + 20) plant(f, p.w - 7, p.wide ? wy + 2 : wy + 1)
 
   glassWall(f, p, tick)
 
   // the bullpen: a desk for each agent, filling the columns row by row, each pair of columns facing
-  const x0 = Math.floor((p.w - gridWidth(p.cols, p.cellW)) / 2)
+  const x0 = p.split ? p.split : Math.floor((p.w - gridWidth(p.cols, p.cellW)) / 2)
   o.workers.forEach((w, i) => {
     const c = i % p.cols
     const cx = x0 + c * p.cellW + Math.floor(c / 2) * AISLE
@@ -570,11 +616,28 @@ const hex = (c: number) => '#' + c.toString(16).padStart(6, '0')
 /** The base layer as a few rects, then only the pixels that differ from it. */
 export function toSvg(f: Frame, scale = 4): string {
   const parts: string[] = []
+  // runs of one colour along a row; a band of rows with the same runs is one set of rects
+  const runs = (y: number) => {
+    const out: [number, number, number][] = []
+    for (let x = 0; x < f.w; ) {
+      const c = f.base[y * f.w + x]
+      let e = x + 1
+      while (e < f.w && f.base[y * f.w + e] === c) e++
+      out.push([x, e - x, c])
+      x = e
+    }
+    return out
+  }
+  const same = (a: [number, number, number][], b: [number, number, number][]) =>
+    a.length === b.length && a.every((r, i) => r[0] === b[i][0] && r[1] === b[i][1] && r[2] === b[i][2])
   let y0 = 0
+  let band = runs(0)
   for (let y = 1; y <= f.h; y++) {
-    if (y < f.h && f.base[y * f.w] === f.base[y0 * f.w]) continue
-    parts.push(`<rect y="${y0}" width="${f.w}" height="${y - y0}" fill="${hex(f.base[y0 * f.w])}"/>`)
+    const next = y < f.h ? runs(y) : []
+    if (y < f.h && same(next, band)) continue
+    for (const [x, w, c] of band) parts.push(`<rect x="${x}" y="${y0}" width="${w}" height="${y - y0}" fill="${hex(c)}"/>`)
     y0 = y
+    band = next
   }
   const byColor = new Map<number, string[]>()
   for (let y = 0; y < f.h; y++) {
