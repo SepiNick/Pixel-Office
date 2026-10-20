@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'claude-code/testing'
 
-import { actOf, addTokens, boardLines, detailOf, fitPicture, isLandscape, live, parseBoard, shortStats, statLines, usageFrom } from './register'
+import { actOf, addTokens, boardLines, detailOf, fitPicture, isLandscape, live, parseBoard, shortStats, statLines, stripColumns, usageFrom } from './register'
 import { drawOffice, gridWidth, plan, toCells, toSvg } from './draw'
 import type { Office } from '../types'
 
@@ -188,8 +188,12 @@ describe('a wide, short pane', () => {
   test('the picture is never taller than the pane, and the figures sit beside it', async ($, on) => {
     // fits the height, keeps the aspect, leaves room beside it
     const s = fitPicture(160, 80, 200, 14)
-    // no taller than the chat box: six lines
-    expect(s.height).toBeLessThanOrEqual(6 * 18)
+    // follows the pane's height, and fits under the chat box across
+    expect(s.height).toBeLessThanOrEqual(14 * 18)
+    expect(s.width).toBeLessThanOrEqual(96 * 8)
+    expect(fitPicture(160, 80, 200, 30).height).toBeGreaterThan(fitPicture(160, 80, 200, 10).height)
+    expect(stripColumns(300)).toBe(96)
+    expect(stripColumns(80)).toBe(80)
     expect(shortStats(sample, NOW).join(' ')).toContain('ctx 63%')
     expect(shortStats(sample, NOW).join(' ')).toContain('week 38% (41h00m)')
     expect(Math.abs(s.width / s.height - 2)).toBeLessThan(0.05)
@@ -200,7 +204,7 @@ describe('a wide, short pane', () => {
     const ui = await $.ui.mount({ plugin: 'pixel-office', surface: 'desktop', component: 'Pane', requestId: 'pixel-office', props })
     const svg = (await ui.find({ type: 'Svg' })) as unknown as { props: { height?: number } } | undefined
     expect(svg).toBeDefined()
-    expect(svg!.props.height).toBeLessThanOrEqual(6 * 18)
+    expect(svg!.props.height).toBeLessThanOrEqual(14 * 18)
     expect(await ui.find({ text: /ctx 63%|ctx --/ })).toBeDefined()
     expect(await ui.find({ key: 'handoff' })).toBeDefined()
     expect(await ui.find({ text: /💸/ })).toBeDefined()

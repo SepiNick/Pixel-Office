@@ -8,7 +8,7 @@ import { drawOffice, plan, toCells, toSvg } from './draw'
 // a remote surface's cell, in CSS pixels: its code font's advance and line height, near enough
 const CELL_PX = 8
 const LINE_PX = 18
-const STRIP_ROWS = 6 // a landscape pane's strip, about as tall as the chat box
+const CHAT_COLS = 96 // the chat box's width in cells: a landscape pane's office fits under it
 
 /** Every figure in a few words each, for the strip beside the picture in a landscape pane. */
 export function shortStats(o: Office, now: number): string[] {
@@ -29,14 +29,16 @@ export function shortStats(o: Office, now: number): string[] {
   ]
 }
 
+/** How many cells across a landscape pane's office takes: the pane, or the chat box's width if that is less. */
+export const stripColumns = (columns: number) => Math.min(columns, CHAT_COLS)
+
 /**
- * The picture's CSS size in a landscape pane: as tall as the pane, never wider than
- * half of it, so the figures beside it keep their room.
+ * The picture's CSS size in a landscape pane: as tall as the pane (so resizing the pane
+ * resizes it), never wider than about half the chat box, so the figures beside it keep their room.
  */
 export function fitPicture(w: number, h: number, columns: number, rows: number) {
-  // about the chat box's height: six lines, or the pane's own if that is less
-  const maxH = Math.max(72, Math.min(STRIP_ROWS * LINE_PX, rows * LINE_PX - 8))
-  const maxW = Math.max(160, Math.floor(columns * CELL_PX * 0.55))
+  const maxH = Math.max(90, rows * LINE_PX - 8)
+  const maxW = Math.max(160, Math.floor(stripColumns(columns) * CELL_PX * 0.55))
   const scale = Math.min(maxH / h, maxW / w)
   return { width: Math.round(w * scale), height: Math.round(h * scale) }
 }
@@ -684,7 +686,7 @@ export const register: Register = on => {
       </Box>
     )
     return (
-      <Box flexDirection={across ? 'row' : 'column'} columnGap={2}>
+      <Box flexDirection={across ? 'row' : 'column'} columnGap={2} width={across ? stripColumns(width) : undefined}>
         {Svg ? <Svg key="office" source={toSvg(f, 4)} alt={alt} width={size?.width} height={size?.height} /> : <Text>{alt}</Text>}
         {info}
       </Box>
