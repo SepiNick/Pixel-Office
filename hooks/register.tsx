@@ -8,13 +8,34 @@ import { drawOffice, plan, toCells, toSvg } from './draw'
 // a remote surface's cell, in CSS pixels: its code font's advance and line height, near enough
 const CELL_PX = 8
 const LINE_PX = 18
+const STRIP_ROWS = 6 // a landscape pane's strip, about as tall as the chat box
+
+/** Every figure in a few words each, for the strip beside the picture in a landscape pane. */
+export function shortStats(o: Office, now: number): string[] {
+  const u = o.usage
+  const t = o.tokens
+  const hit = hitRate(t)
+  const left = (iso?: string) => {
+    const h = hoursUntil(iso, now)
+    return h === undefined ? '' : ` (${hm(h)})`
+  }
+  return [
+    `🧠 ctx ${u.ctxPercent === undefined ? '--' : u.ctxPercent + '%'}`,
+    `⏱ 5h ${u.quotaUsed === undefined ? '--' : Math.round(u.quotaUsed) + '%' + left(u.quotaResetsAt)}`,
+    `⏳ week ${u.weeklyUsed === undefined ? '--' : Math.round(u.weeklyUsed) + '%' + left(u.weeklyResetsAt)}`,
+    `💾 cache ${t.turns ? kTok(t.cacheRead) + (hit === undefined ? '' : ` ${hit}%`) : '--'}`,
+    `🔢 ${t.turns ? kTok(total(t)) : '--'} tokens`,
+    `💸 ${u.costUsd === undefined ? '--' : '$' + u.costUsd.toFixed(4)}`,
+  ]
+}
 
 /**
  * The picture's CSS size in a landscape pane: as tall as the pane, never wider than
  * half of it, so the figures beside it keep their room.
  */
 export function fitPicture(w: number, h: number, columns: number, rows: number) {
-  const maxH = Math.max(90, rows * LINE_PX - 8)
+  // about the chat box's height: six lines, or the pane's own if that is less
+  const maxH = Math.max(72, Math.min(STRIP_ROWS * LINE_PX, rows * LINE_PX - 8))
   const maxW = Math.max(160, Math.floor(columns * CELL_PX * 0.55))
   const scale = Math.min(maxH / h, maxW / w)
   return { width: Math.round(w * scale), height: Math.round(h * scale) }
@@ -588,6 +609,8 @@ export const register: Register = on => {
       head: w.num === 0 ? 'BOSS' : `#${w.num} ${w.kind}`,
       who: w.num === 0 ? '' : cut(w.label, 32),
       what: sentence(w),
+      tag: w.num === 0 ? 'BOSS' : '#' + w.num,
+      doing: WORDS[w.act],
       isDone: w.act === 'done',
       agentId: w.num === 0 ? undefined : w.id,
     }))
@@ -632,17 +655,32 @@ export const register: Register = on => {
         {ready ? <Code source={ho.prompt ?? ''} /> : null}
         {ready ? <Button key="copy" label="Copy the prompt again" onPress={again} /> : null}
         {ready && ho.file ? <Button key="term" label="Open in a new terminal" onPress={term} /> : null}
-        {stats.map(line => (
-          <Text>{line}</Text>
-        ))}
-        <Box key="roster" flexDirection={across ? 'row' : 'column'} flexWrap={across ? 'wrap' : 'nowrap'} columnGap={3}>
-          {roster.map(row => (
-            <Button key={row.key} plain onPress={() => $.ui.view(row.agentId ? { agentId: row.agentId } : {})}>
-              <Text bold>{row.head}</Text> {row.who ? <Text dimColor>{row.who} </Text> : ''}
-              <Text dimColor={row.isDone}>— {row.what}</Text>
-            </Button>
-          ))}
-        </Box>
+        {across ? (
+          // the strip: every figure as a short chip, every agent as its number and what it is doing
+          <Box key="strip" flexDirection="row" flexWrap="wrap" columnGap={2}>
+            {shortStats(o, now).map(s => (
+              <Text>{s}</Text>
+            ))}
+            {roster.map(row => (
+              <Button key={row.key} plain onPress={() => $.ui.view(row.agentId ? { agentId: row.agentId } : {})}>
+                <Text bold dimColor={row.isDone}>{row.tag}</Text>
+                <Text dimColor> {row.doing}</Text>
+              </Button>
+            ))}
+          </Box>
+        ) : (
+          <>
+            {stats.map(line => (
+              <Text>{line}</Text>
+            ))}
+            {roster.map(row => (
+              <Button key={row.key} plain onPress={() => $.ui.view(row.agentId ? { agentId: row.agentId } : {})}>
+                <Text bold>{row.head}</Text> {row.who ? <Text dimColor>{row.who} </Text> : ''}
+                <Text dimColor={row.isDone}>— {row.what}</Text>
+              </Button>
+            ))}
+          </>
+        )}
       </Box>
     )
     return (
