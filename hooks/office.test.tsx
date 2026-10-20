@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'claude-code/testing'
 
-import { actOf, addTokens, boardLines, detailOf, isLandscape, live, parseBoard, statLines, usageFrom } from './register'
+import { actOf, addTokens, boardLines, detailOf, fitPicture, isLandscape, live, parseBoard, statLines, usageFrom } from './register'
 import { drawOffice, gridWidth, plan, toCells, toSvg } from './draw'
 import type { Office } from '../types'
 
@@ -181,6 +181,26 @@ describe('the pane', () => {
       expect(await ui.find({ type: surface === 'terminal' ? 'Raster' : 'Svg' })).toBeDefined()
       await ui.unmount()
     }
+  })
+})
+
+describe('a wide, short pane', () => {
+  test('the picture is never taller than the pane, and the figures sit beside it', async ($, on) => {
+    // fits the height, keeps the aspect, leaves room beside it
+    const s = fitPicture(160, 80, 200, 14)
+    expect(s.height).toBeLessThanOrEqual(14 * 18)
+    expect(Math.abs(s.width / s.height - 2)).toBeLessThan(0.05)
+    expect(s.width).toBeLessThanOrEqual(200 * 8)
+
+    on('clock.now', async () => ({ value: NOW }))
+    const props = { ...PANE_PROPS, bodyColumns: 200, scroll: { offset: 0, bodyRows: 14 } }
+    const ui = await $.ui.mount({ plugin: 'pixel-office', surface: 'desktop', component: 'Pane', requestId: 'pixel-office', props })
+    const svg = (await ui.find({ type: 'Svg' })) as unknown as { props: { height?: number } } | undefined
+    expect(svg).toBeDefined()
+    expect(svg!.props.height).toBeLessThanOrEqual(14 * 18)
+    expect(await ui.find({ key: 'handoff' })).toBeDefined()
+    expect(await ui.find({ text: /This session/ })).toBeDefined()
+    await ui.unmount()
   })
 })
 

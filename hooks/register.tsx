@@ -5,6 +5,21 @@ import type { Act, BoardItem, Handoff, Office, Tokens, Usage, Worker } from '../
 import type { BoardLine } from './draw'
 import { drawOffice, plan, toCells, toSvg } from './draw'
 
+// a remote surface's cell, in CSS pixels: its code font's advance and line height, near enough
+const CELL_PX = 8
+const LINE_PX = 18
+
+/**
+ * The picture's CSS size in a landscape pane: as tall as the pane, never wider than
+ * half of it, so the figures beside it keep their room.
+ */
+export function fitPicture(w: number, h: number, columns: number, rows: number) {
+  const maxH = Math.max(90, rows * LINE_PX - 8)
+  const maxW = Math.max(160, Math.floor(columns * CELL_PX * 0.55))
+  const scale = Math.min(maxH / h, maxW / w)
+  return { width: Math.round(w * scale), height: Math.round(h * scale) }
+}
+
 /** Whether a pane of this many cells is wider than it is tall, a cell being about twice as tall as wide. */
 export const isLandscape = (columns: number, rows: number) => rows > 0 && columns > rows * 2
 
@@ -608,9 +623,10 @@ export const register: Register = on => {
     // never re-lays it out taller, and the whiteboard always hangs beside the boss
     const f = drawOffice(o, DESKTOP_W, t, extras, across)
     const alt = `Pixel office: the boss in his room and ${o.workers.length} agents in the bullpen. ${stats.join(' ')}`
-    return (
-      <Box flexDirection="column">
-        {Svg ? <Svg source={toSvg(f, 4)} alt={alt} /> : <Text>{alt}</Text>}
+    // a wide, short pane (docked under the chat): the picture as tall as the pane, the figures beside it
+    const size = across ? fitPicture(f.w, f.h, width, e.props.scroll.bodyRows) : undefined
+    const info = (
+      <Box key="info" flexDirection="column" flexShrink={1}>
         <Button key="handoff" variant={full ? 'primary' : 'secondary'} label={hoLabel} onPress={press} />
         {hoNote ? <Text dimColor>{hoNote}</Text> : null}
         {ready ? <Code source={ho.prompt ?? ''} /> : null}
@@ -619,12 +635,20 @@ export const register: Register = on => {
         {stats.map(line => (
           <Text>{line}</Text>
         ))}
-        {roster.map(row => (
-          <Button key={row.key} plain onPress={() => $.ui.view(row.agentId ? { agentId: row.agentId } : {})}>
-            <Text bold>{row.head}</Text> {row.who ? <Text dimColor>{row.who} </Text> : ''}
-            <Text dimColor={row.isDone}>— {row.what}</Text>
-          </Button>
-        ))}
+        <Box key="roster" flexDirection={across ? 'row' : 'column'} flexWrap={across ? 'wrap' : 'nowrap'} columnGap={3}>
+          {roster.map(row => (
+            <Button key={row.key} plain onPress={() => $.ui.view(row.agentId ? { agentId: row.agentId } : {})}>
+              <Text bold>{row.head}</Text> {row.who ? <Text dimColor>{row.who} </Text> : ''}
+              <Text dimColor={row.isDone}>— {row.what}</Text>
+            </Button>
+          ))}
+        </Box>
+      </Box>
+    )
+    return (
+      <Box flexDirection={across ? 'row' : 'column'} columnGap={2}>
+        {Svg ? <Svg key="office" source={toSvg(f, 4)} alt={alt} width={size?.width} height={size?.height} /> : <Text>{alt}</Text>}
+        {info}
       </Box>
     )
   })

@@ -30,7 +30,7 @@ Each subagent gets its own numbered desk, one desk per agent, and its monitor sh
 editing files, reading, terminal, web, planning, or asking you something.
 When it finishes it turns grey and shows Zz.
 Desks run down the room in columns, each pair of columns facing across their monitors: two columns up to 8 agents, and past 8 smaller desks in four columns.
-The office follows the pane: in a tall pane the boss's room is on top with the bullpen below; in a wide pane the whole office turns sideways, the room down the left behind a glass wall and the desks to its right.
+The office follows the pane: in a tall pane the boss's room is on top with the bullpen below; in a wide pane the whole office turns sideways, the room down the left behind a glass wall and the desks to its right. In a wide, short pane (docked under the chat) the picture is only as tall as the pane, and the figures and the agent list sit beside it.
 The bullpen seats up to 32 agents. Claude Code itself runs at most 20 subagents at once by default (`CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS` raises that); tested with 20 running together.
 
 Under the picture every number is written out in full; cost is shown to 4 decimal places.
@@ -93,7 +93,7 @@ The pane opens by itself at the start of each session. If you close it, `/office
 ویرایش فایل، خوندن، ترمینال، وب، برنامه‌ریزی یا پرسیدن از تو.
 وقتی کارش تموم بشه خاکستری میشه و Zz نشون میده.
 میزها توی ستون‌های عمودی چیده میشن و هر دو ستون روبروی هم‌ان: تا ۸ ایجنت دو ستون، از ۸ تا بیشتر بشن میزها کوچیک‌تر میشن و چهار ستون میشن.
-دفتر خودش رو با شکل پنل هماهنگ می‌کنه: توی پنل عمودی اتاق رئیس بالاست و سالن زیرش؛ توی پنل افقی کل دفتر افقی میشه، اتاق رئیس سمت چپ پشت یه دیوار شیشه‌ای و میزها سمت راستش.
+دفتر خودش رو با شکل پنل هماهنگ می‌کنه: توی پنل عمودی اتاق رئیس بالاست و سالن زیرش؛ توی پنل افقی کل دفتر افقی میشه، اتاق رئیس سمت چپ پشت یه دیوار شیشه‌ای و میزها سمت راستش. توی پنل پهن و کوتاه (وقتی زیر چت داک میشه) تصویر فقط به اندازه‌ی ارتفاع پنله و آمار و فهرست ایجنت‌ها کنارش نمایش داده میشن.
 سالن تا ۳۲ ایجنت جا داره. خود Claude Code به‌طور پیش‌فرض حداکثر ۲۰ ساب‌ایجنت رو هم‌زمان اجرا می‌کنه (با `CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS` بیشترش کن)؛ با ۲۰ ایجنت هم‌زمان تست شده.
 
 زیر تصویر همه عددها با جزئیات کامل نوشته میشن. هزینه با ۴ رقم اعشار نمایش داده میشه.

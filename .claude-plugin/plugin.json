@@ -1,6 +1,6 @@
 {
   "name": "pixel-office",
-  "version": "0.7.0",
+  "version": "0.7.1",
   "description": "An 8-bit office like The Office: the boss in his glass room with quota and context clocks and a whiteboard of stats, agents in the bullpen, and a one-press handoff that carries the remaining work into a new chat",
   "types": "./types/index.d.ts",
   "author": {
