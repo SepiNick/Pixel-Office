@@ -72,6 +72,8 @@ const office = atom({ plugin: 'pixel-office', key: 'office' } as const, {
 const tick = atom({ plugin: 'pixel-office', key: 'tick' } as const, 0)
 const board = atom({ plugin: 'pixel-office', key: 'board' } as const, DEFAULT_BOARD)
 const handoff = atom({ plugin: 'pixel-office', key: 'handoff' } as const, { status: 'idle' } as Handoff)
+// whether this chat has had its first prompt yet: the office is opened once more then, as the person's own act
+const greeted = atom({ plugin: 'pixel-office', key: 'greeted' } as const, false)
 
 export const HANDOFF_PROMPT = [
   'We are about to continue this work in a brand-new chat whose context is empty.',
@@ -488,6 +490,23 @@ export const register: Register = on => {
     await refreshUsage($)
     $.clock.every(400, () => void frame($))
     void $.ui.open({ id: PANE, title: TITLE })
+    return next(e)
+  })
+
+  // Open in every chat without being asked. The open at session.start waits for a surface; a
+  // surface that attaches later gets it again, and the chat's first prompt opens it as the
+  // person's own input, which every surface places. Closed by hand after that, it stays closed
+  // until the next chat.
+  on('session.attach', async ($, e, next) => {
+    void $.ui.open({ id: PANE, title: TITLE })
+    return next(e)
+  })
+
+  on('prompt.submit', async ($, e, next) => {
+    if (!(await read($, greeted))) {
+      await update($, greeted, () => true)
+      void $.ui.open({ id: PANE, title: TITLE })
+    }
     return next(e)
   })
 

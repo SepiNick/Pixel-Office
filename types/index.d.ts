@@ -68,6 +68,6 @@ export type Handoff = {
 
 declare module 'claude-code' {
   interface PluginState {
-    'pixel-office': { office: Office; tick: number; board: BoardItem[]; handoff: Handoff }
+    'pixel-office': { office: Office; tick: number; board: BoardItem[]; handoff: Handoff; greeted: boolean }
   }
 }

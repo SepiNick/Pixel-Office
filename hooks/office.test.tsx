@@ -213,6 +213,20 @@ describe('a wide, short pane', () => {
   })
 })
 
+describe('opening by itself', () => {
+  test("a chat's first prompt opens the office once, and a surface attaching opens it too", async ($, on) => {
+    const opened: string[] = []
+    on('ui.open', async (_$, e) => {
+      opened.push(e.id)
+      return { value: { isPlaced: true as const } }
+    })
+    on('prompt.submit', async (_$, e) => ({ text: e.text }) as never)
+    await $.prompt.submit({ text: 'first' })
+    await $.prompt.submit({ text: 'second' })
+    expect(opened.filter(id => id === 'pixel-office').length).toBe(1)
+  })
+})
+
 describe('the handoff', () => {
   test('writes the memo, copies the prompt, and keeps this chat', async ($, on) => {
     const written: string[] = []
